@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "fingerprintd"
+#define LOG_NDEBUG 0
+#define LOG_TAG "FingerprintDaemonProxy"
 
 #include <cutils/properties.h>
 #include <binder/IServiceManager.h>
@@ -32,7 +33,7 @@ namespace android {
 enum {
     HACK_NONE = 0,
     HACK_CANCEL = 1,
-    HACK_SET_ACTIVE_GROUP = 3,
+    HACK_SET_ACTIVE_GROUP = 2,
 };
 static int vendor_hack = HACK_NONE;
 
@@ -120,7 +121,7 @@ void FingerprintDaemonProxy::notifyKeystore(const uint8_t *auth_token, const siz
         sp < IKeystoreService > service = interface_cast < IKeystoreService > (binder);
         if (service != NULL) {
             status_t ret = service->addAuthToken(auth_token, auth_token_length);
-            if (ret != ResponseCode::NO_ERROR) {
+            if (ret != (int) ResponseCode::NO_ERROR) {
                 ALOGE("Falure sending auth token to KeyStore: %d", ret);
             }
         } else {
@@ -158,7 +159,7 @@ int32_t FingerprintDaemonProxy::postEnroll() {
 
 int32_t FingerprintDaemonProxy::stopEnrollment() {
     ALOG(LOG_VERBOSE, LOG_TAG, "stopEnrollment()\n");
-    return mDevice->cancel(mDevice);
+    return cancel();
 }
 
 int32_t FingerprintDaemonProxy::authenticate(uint64_t sessionId, uint32_t groupId) {
@@ -226,7 +227,7 @@ int64_t FingerprintDaemonProxy::openHal() {
     if (!strcmp(vend, "fpc"))
         vendor_hack |= HACK_CANCEL;
     else
-        vendor_hack |= HACK_SET_ACTIVE_GROUP;
+        vendor_hack |= HACK_SET_ACTIVE_GROUP | HACK_CANCEL;             // for goodix need both
 
     if (0 != (err = hw_get_module(FINGERPRINT_HARDWARE_MODULE_ID, &hw_module))) {
         ALOGE("Can't open fingerprint HW Module, error: %d", err);
