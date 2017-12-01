@@ -4,7 +4,7 @@
     
  \# Fingerprint
  
-   PRODUCT_PACKAGES + = \\
+   PRODUCT_PACKAGES += \\
    
         android.hardware.biometrics.fingerprint@2.0-service-custom \
         
