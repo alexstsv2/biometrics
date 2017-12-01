@@ -11,7 +11,7 @@ LOCAL_SRC_FILES := \
     fingerprintd/FingerprintDaemonCallbackProxy.cpp \
     fingerprintd/FingerprintDaemonProxy.cpp \
     fingerprintd/IFingerprintDaemonCallback.cpp \
-    fingerprintd/IFingerprintDaemon.cpp \
+    fingerprintd/IFingerprintDaemon.cpp
 
 LOCAL_SHARED_LIBRARIES := \
     libbinder \

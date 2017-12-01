@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define LOG_NDEBUG 0
 #define LOG_TAG "FingerprintHal"
 #include <errno.h>
 #include <malloc.h>
 #include <string.h>
+#include <unistd.h>
 #include <cutils/log.h>
 #include <hardware/hardware.h>
 #include <hardware/fingerprint.h>
@@ -24,20 +26,20 @@
 #include <binder/IPCThreadState.h>
 #include <binder/IInterface.h>
 
-#include "GoodixFingerprintDaemonProxy.h"
-#include "IGoodixFingerprintDaemon.h"
-#include "IGoodixFingerprintDaemonCallback.h"
-#include "GoodixFingerprintDaemonCallbackProxy.h"
+#include "FingerprintDaemonProxy.h"
+#include "IFingerprintDaemon.h"
+#include "IFingerprintDaemonCallback.h"
+#include "FingerprintDaemonCallbackProxy.h"
 
 using namespace android;
 
-sp<IGoodixFingerprintDaemon> g_service = NULL;
+sp<IFingerprintDaemon> g_service = NULL;
 
 fingerprint_device_t *g_device = NULL;
 
-sp<IGoodixFingerprintDaemon> getService();
+sp<IFingerprintDaemon> getService();
 
-class GoodixBinderDiednotify: public IBinder::DeathRecipient {
+class BinderDiednotify: public IBinder::DeathRecipient {
     public:
         void binderDied(const wp<IBinder> __unused &who) {
             ALOGV("binderDied");
@@ -47,32 +49,33 @@ class GoodixBinderDiednotify: public IBinder::DeathRecipient {
         }
 };
 
-static sp<GoodixBinderDiednotify> gDeathRecipient = new GoodixBinderDiednotify();
+static sp<BinderDiednotify> gDeathRecipient = new BinderDiednotify();
 
-sp<IGoodixFingerprintDaemon> getService() {
+sp<IFingerprintDaemon> getService() {
 
     do {
         if (g_service == NULL) {
             ALOGV("getService g_servie is NULL");
 
             sp<IServiceManager> sm = defaultServiceManager();
-            sp<IBinder> binder = sm->getService(android::GoodixFingerprintDaemonProxy::descriptor);
+            sp<IBinder> binder = sm->getService(android::FingerprintDaemonProxy::descriptor);
             if (binder == NULL) {
                 ALOGE("getService failed");
-                break;
+                sleep(1);
+                continue;
             }
-            g_service = interface_cast<IGoodixFingerprintDaemon>(binder);
+            g_service = interface_cast<IFingerprintDaemon>(binder);
             binder->linkToDeath(gDeathRecipient, NULL, 0);
 
             if (g_service != NULL) {
-                ALOGV("getService succeed");
-                sp<android::GoodixFingerprintDaemonCallbackProxy> callback =
-                        new GoodixFingerprintDaemonCallbackProxy();
-                GoodixFingerprintDaemonCallbackProxy::setDevice(g_device);
+                ALOGE("getService succeed");
+                sp<android::FingerprintDaemonCallbackProxy> callback =
+                        new FingerprintDaemonCallbackProxy();
+                FingerprintDaemonCallbackProxy::setDevice(g_device);
                 g_service->init(callback);
 
                 int ret = g_service->openHal();
-                if (ret != 0) {
+                if (ret == 0) {
                     ALOGE("getService openHal failed!");
                     g_service = NULL;
                 }
@@ -86,7 +89,7 @@ sp<IGoodixFingerprintDaemon> getService() {
 static int fingerprint_close(hw_device_t *dev) {
     ALOGV("fingerprint_close");
     if (dev) {
-        sp<IGoodixFingerprintDaemon> service = getService();
+        sp<IFingerprintDaemon> service = getService();
         if (service == NULL) {
             return FINGERPRINT_ERROR;
         } else {
@@ -102,7 +105,7 @@ static int fingerprint_close(hw_device_t *dev) {
 
 static uint64_t fingerprint_pre_enroll(struct fingerprint_device __unused *dev) {
     ALOGV("fingerprint_pre_enroll");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -115,7 +118,7 @@ static int fingerprint_enroll(struct fingerprint_device __unused *dev,
                                 uint32_t gid,
                                 uint32_t timeout_sec) {
     ALOGV("fingerprint_enroll");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -125,7 +128,7 @@ static int fingerprint_enroll(struct fingerprint_device __unused *dev,
 
 static int fingerprint_post_enroll(struct fingerprint_device __unused *dev) {
     ALOGV("fingerprint_post_enroll");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -135,7 +138,7 @@ static int fingerprint_post_enroll(struct fingerprint_device __unused *dev) {
 
 static uint64_t fingerprint_get_auth_id(struct fingerprint_device __unused *dev) {
     ALOGV("fingerprint_get_auth_id");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -145,7 +148,7 @@ static uint64_t fingerprint_get_auth_id(struct fingerprint_device __unused *dev)
 
 static int fingerprint_cancel(struct fingerprint_device __unused *dev) {
     ALOGV("fingerprint_cancel");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -156,7 +159,7 @@ static int fingerprint_cancel(struct fingerprint_device __unused *dev) {
 static int fingerprint_remove(struct fingerprint_device __unused *dev,
                                 uint32_t gid, uint32_t fid) {
     ALOGV("fingerprint_remove");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -170,7 +173,7 @@ static int fingerprint_set_active_group(struct fingerprint_device __unused *dev,
     uint32_t path_len = strlen(store_path);
     uint8_t path_name[PATH_MAX] = {0};
     memcpy(path_name, store_path, path_len);
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
@@ -181,7 +184,7 @@ static int fingerprint_set_active_group(struct fingerprint_device __unused *dev,
 static int fingerprint_authenticate(struct fingerprint_device __unused *dev,
                                     uint64_t operation_id, uint32_t gid) {
     ALOGV("fingerprint_authenticate");
-    sp<IGoodixFingerprintDaemon> service = getService();
+    sp<IFingerprintDaemon> service = getService();
     if(service == NULL) {
         return FINGERPRINT_ERROR;
     } else {
