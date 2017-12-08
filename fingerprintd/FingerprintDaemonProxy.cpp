@@ -17,6 +17,7 @@
 #define LOG_NDEBUG 0
 #define LOG_TAG "FingerprintDaemonProxy"
 
+#include <unistd.h>
 #include <cutils/properties.h>
 #include <binder/IServiceManager.h>
 #include <hardware/hardware.h>
@@ -195,7 +196,9 @@ int32_t FingerprintDaemonProxy::cancel() {
 }
 
 uint64_t FingerprintDaemonProxy::getAuthenticatorId() {
-    ALOG(LOG_VERBOSE, LOG_TAG, "getAuthenticatorId()\n");
+    ALOG(LOG_VERBOSE, LOG_TAG, "================= getAuthenticatorId() before sleep ===============\n");
+    usleep(200000);
+    ALOG(LOG_VERBOSE, LOG_TAG, "================= getAuthenticatorId() after sleep  ===============\n");
     return mDevice->get_authenticator_id(mDevice);
 }
 
