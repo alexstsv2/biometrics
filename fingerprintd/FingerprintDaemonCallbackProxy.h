@@ -18,11 +18,11 @@ public:
     FingerprintDaemonCallbackProxy();
     virtual ~FingerprintDaemonCallbackProxy();
 
-    static void setDevice(fingerprint_device_t *device) {
-        mDevice = device;
+    static void setDevice(fingerprint_notify_t notify) {
+        mNotify = notify;
     }
 private:
-    static fingerprint_device_t *mDevice;
+    static fingerprint_notify_t mNotify;
 };
 
 }

@@ -12,7 +12,7 @@
 
 using namespace android;
 
-fingerprint_notify_t* FingerprintDaemonCallbackProxy::mNotify = NULL;
+fingerprint_notify_t FingerprintDaemonCallbackProxy::mNotify = NULL;
 
 FingerprintDaemonCallbackProxy::FingerprintDaemonCallbackProxy() {
 }
@@ -37,7 +37,7 @@ status_t FingerprintDaemonCallbackProxy::onEnrollResult(int64_t devId, int32_t f
     return 0;
 }
 
-status_t FingerprintDaemonCallbackProxy::onAcquired(int64_t  devId, int32_t  acquiredInfo) {
+status_t FingerprintDaemonCallbackProxy::onAcquired(int64_t devId, int32_t acquiredInfo) {
     fingerprint_msg_t message;
     message.type = FINGERPRINT_ACQUIRED;
     message.data.acquired.acquired_info = (fingerprint_acquired_info_t)acquiredInfo;
@@ -67,7 +67,7 @@ status_t FingerprintDaemonCallbackProxy::onAuthenticated(int64_t devId, int32_t 
     return 0;
 }
 
-status_t FingerprintDaemonCallbackProxy::onError(int64_t  devId, int32_t  error) {
+status_t FingerprintDaemonCallbackProxy::onError(int64_t devId, int32_t error) {
     fingerprint_msg_t message;
     message.type = FINGERPRINT_ERROR;
     message.data.error = (fingerprint_error_t)error;
@@ -82,7 +82,7 @@ status_t FingerprintDaemonCallbackProxy::onError(int64_t  devId, int32_t  error)
 }
 
 status_t FingerprintDaemonCallbackProxy::onRemoved(int64_t  devId,
-        int32_t  fingerId, int32_t  groupId) {
+        int32_t fingerId, int32_t groupId) {
     fingerprint_msg_t message;
     message.type = FINGERPRINT_TEMPLATE_REMOVED;
     message.data.removed.finger.fid = fingerId;
@@ -98,6 +98,6 @@ status_t FingerprintDaemonCallbackProxy::onRemoved(int64_t  devId,
 }
 
 status_t FingerprintDaemonCallbackProxy::onEnumerate(int64_t  devId,
-        const int32_t  fpId, const int32_t  gpId, int32_t  rem) {
+        const int32_t fpId, const int32_t gpId, int32_t rem) {
     return 0;
 }
