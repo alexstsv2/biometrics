@@ -151,7 +151,7 @@ int32_t FingerprintDaemonProxy::postEnroll() {
 
 int32_t FingerprintDaemonProxy::stopEnrollment() {
     ALOG(LOG_VERBOSE, LOG_TAG, "stopEnrollment()\n");
-    return mDevice->cancel();
+    return mDevice->cancel(mDevice);
 }
 
 int32_t FingerprintDaemonProxy::authenticate(uint64_t sessionId, uint32_t groupId) {
@@ -228,7 +228,7 @@ int64_t FingerprintDaemonProxy::openHal() {
 
     if (kVersion != device->version) {
         ALOGE("Wrong fp version. Expected %d, got %d", kVersion, device->version);
-        // return 0; // FIXME
+        return 0;
     }
 
     mDevice = reinterpret_cast<fingerprint_device_t*>(device);
