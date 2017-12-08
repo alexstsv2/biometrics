@@ -17,8 +17,6 @@
 #define LOG_NDEBUG 0
 #define LOG_TAG "FingerprintDaemonProxy"
 
-#include <unistd.h>
-#include <cutils/properties.h>
 #include <binder/IServiceManager.h>
 #include <hardware/hardware.h>
 #include <hardware/fingerprint.h>
@@ -30,13 +28,6 @@
 #include "FingerprintDaemonProxy.h"
 
 namespace android {
-
-enum {
-    HACK_NONE = 0,
-    HACK_CANCEL = 1,
-    HACK_SET_ACTIVE_GROUP = 2,
-};
-static int vendor_hack = HACK_NONE;
 
 FingerprintDaemonProxy* FingerprintDaemonProxy::sInstance = NULL;
 
@@ -160,7 +151,7 @@ int32_t FingerprintDaemonProxy::postEnroll() {
 
 int32_t FingerprintDaemonProxy::stopEnrollment() {
     ALOG(LOG_VERBOSE, LOG_TAG, "stopEnrollment()\n");
-    return cancel();
+    return mDevice->cancel();
 }
 
 int32_t FingerprintDaemonProxy::authenticate(uint64_t sessionId, uint32_t groupId) {
@@ -184,21 +175,12 @@ int32_t FingerprintDaemonProxy::enumerate() {
 }
 
 int32_t FingerprintDaemonProxy::cancel() {
-    int ret = mDevice->cancel(mDevice);
-    ALOG(LOG_VERBOSE, LOG_TAG, "cancel() %d\n", ret);
-    if ((ret == 0) && (vendor_hack & HACK_CANCEL)) {
-        fingerprint_msg_t msg;
-        msg.type = FINGERPRINT_ERROR;
-        msg.data.error = FINGERPRINT_ERROR_CANCELED;
-        mDevice->notify(&msg);
-    }
-    return ret;
+    ALOG(LOG_VERBOSE, LOG_TAG, "cancel()\n");
+    return mDevice->cancel(mDevice);
 }
 
 uint64_t FingerprintDaemonProxy::getAuthenticatorId() {
-    ALOG(LOG_VERBOSE, LOG_TAG, "================= getAuthenticatorId() before sleep ===============\n");
-    usleep(200000);
-    ALOG(LOG_VERBOSE, LOG_TAG, "================= getAuthenticatorId() after sleep  ===============\n");
+    ALOG(LOG_VERBOSE, LOG_TAG, "getAuthenticatorId()\n");
     return mDevice->get_authenticator_id(mDevice);
 }
 
@@ -212,25 +194,14 @@ int32_t FingerprintDaemonProxy::setActiveGroup(int32_t groupId, const uint8_t* p
     char path_name[PATH_MAX];
     memcpy(path_name, path, pathlen);
     path_name[pathlen] = '\0';
-    int ret = mDevice->set_active_group(mDevice, groupId, path_name);
-    ALOG(LOG_VERBOSE, LOG_TAG, "setActiveGroup(%d, %s, %zu) %d", groupId, path_name, pathlen, ret);
-    if ((ret > 0) && (vendor_hack & HACK_SET_ACTIVE_GROUP))
-        ret = 0;
-    return ret;
+    ALOG(LOG_VERBOSE, LOG_TAG, "setActiveGroup(%d, %s, %zu)", groupId, path_name, pathlen);
+    return mDevice->set_active_group(mDevice, groupId, path_name);
 }
 
 int64_t FingerprintDaemonProxy::openHal() {
     ALOG(LOG_VERBOSE, LOG_TAG, "nativeOpenHal()\n");
     int err;
     const hw_module_t *hw_module = NULL;
-
-    char vend [PROPERTY_VALUE_MAX];
-    property_get("ro.boot.fpsensor", vend, NULL);
-
-    if (!strcmp(vend, "fpc"))
-        vendor_hack |= HACK_CANCEL;
-    else
-        vendor_hack |= HACK_SET_ACTIVE_GROUP | HACK_CANCEL;             // for goodix need both
 
     if (0 != (err = hw_get_module(FINGERPRINT_HARDWARE_MODULE_ID, &hw_module))) {
         ALOGE("Can't open fingerprint HW Module, error: %d", err);
