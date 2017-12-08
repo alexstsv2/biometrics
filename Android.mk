@@ -7,7 +7,12 @@ LOCAL_PROPRIETARY_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_SRC_FILES := \
     BiometricsFingerprint.cpp \
-    service.cpp
+    service.cpp \
+    fingerprintd/FingerprintDaemonCallbackProxy.cpp \
+    fingerprintd/FingerprintDaemonProxy.cpp \
+    fingerprintd/IFingerprintDaemonCallback.cpp \
+    fingerprintd/IFingerprintDaemon.cpp \
+    fingerprintd/wrapper.cpp
 
 LOCAL_SHARED_LIBRARIES := \
     libbinder \
@@ -19,8 +24,7 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
     libhwbinder \
     libkeystore_binder \
-    android.hardware.biometrics.fingerprint@2.1 \
-    libfingerprintd_binder
+    android.hardware.biometrics.fingerprint@2.1
 
 include $(BUILD_EXECUTABLE)
 
