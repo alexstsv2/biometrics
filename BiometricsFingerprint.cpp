@@ -21,6 +21,7 @@
 #include <hardware/hardware.h>
 #include <hardware/fingerprint.h>
 #include "BiometricsFingerprint.h"
+#include <cutils/properties.h>
 
 #include <inttypes.h>
 #include <unistd.h>
@@ -36,6 +37,7 @@ namespace implementation {
 
 // Supported fingerprint HAL version
 static const uint16_t kVersion = HARDWARE_MODULE_API_VERSION(2, 0);
+static bool is_goodix = false;
 
 using RequestStatus =
         android::hardware::biometrics::fingerprint::V2_1::RequestStatus;
@@ -44,8 +46,17 @@ BiometricsFingerprint *BiometricsFingerprint::sInstance = nullptr;
 
 BiometricsFingerprint::BiometricsFingerprint() : mClientCallback(nullptr), mDevice(nullptr) {
     sInstance = this; // keep track of the most recent instance
-//    mDevice = openHal();
-    mDevice = getWrapperService(BiometricsFingerprint::notify);
+    char vend [PROPERTY_VALUE_MAX];
+    property_get("ro.boot.fpsensor", vend, NULL);
+
+    if (!strcmp(vend, "fpc")) {
+        is_goodix = false;
+        mDevice = openHal();
+    } else {
+        is_goodix = true;
+        mDevice = getWrapperService(BiometricsFingerprint::notify);
+    }
+
     if (!mDevice) {
         ALOGE("Can't open HAL module");
     }
@@ -176,6 +187,11 @@ Return<uint64_t> BiometricsFingerprint::getAuthenticatorId() {
 }
 
 Return<RequestStatus> BiometricsFingerprint::cancel() {
+    fingerprint_msg_t msg;
+    msg.type = FINGERPRINT_ERROR;
+    msg.data.error = FINGERPRINT_ERROR_CANCELED;
+    mDevice->notify(&msg);
+
     return ErrorFilter(mDevice->cancel(mDevice));
 }
 
@@ -219,8 +235,10 @@ Return<RequestStatus> BiometricsFingerprint::setActiveGroup(uint32_t gid,
         return RequestStatus::SYS_EINVAL;
     }
 
-    return ErrorFilter(mDevice->set_active_group(mDevice, gid,
-                                                    storePath.c_str()));
+    int ret = mDevice->set_active_group(mDevice, gid, storePath.c_str());
+    if ((ret > 0) && is_goodix)
+        ret = 0;
+    return ErrorFilter(ret);
 }
 
 Return<RequestStatus> BiometricsFingerprint::authenticate(uint64_t operationId,
@@ -239,7 +257,7 @@ fingerprint_device_t* BiometricsFingerprint::openHal() {
     int err;
     const hw_module_t *hw_mdl = nullptr;
     ALOGD("Opening fingerprint hal library...");
-    if (0 != (err = hw_get_module_by_class(FINGERPRINT_HARDWARE_MODULE_ID, "wrapper", &hw_mdl))) {
+    if (0 != (err = hw_get_module(FINGERPRINT_HARDWARE_MODULE_ID, &hw_mdl))) {
         ALOGE("Can't open fingerprint HW Module, error: %d", err);
         return nullptr;
     }
